@@ -1,0 +1,272 @@
+---
+title: "Predict Housing Prices"
+author: "Mohammad Taslim Mazumder sohel"
+format: html
+editor: visual
+---
+
+## Prepare the R Environment
+
+We need to install 3 packages to use them to complete the assignment:
+
+```{r}
+setwd("/Users/sohel/Library/CloudStorage/Dropbox/MS-Class-2023/MachineLearning/Assignment/")
+
+# Install following packages if already not, and load necessary packages
+#install.packages("tidyverse")
+#install.packages("caret")
+#install.packages("randomForest")
+
+library(tidyverse)
+library(caret)
+library(randomForest)
+library(rpart) 
+library(caTools) 
+library(dummy)
+```
+
+**1. Data Loading and Exploration**
+
+***a. Load the housing prices dataset***
+
+```{r}
+housing_data <- read.csv("Housing.csv")
+```
+
+***b. Explore the dataset's structure, dimensions, and summary statistics***
+
+```{r}
+str(housing_data)
+summary(housing_data)
+```
+
+**2. Data Splitting**
+
+***a. Split the dataset into a training set and a test set***
+
+***b. Use appropriate techniques to ensure a random and representative split***
+
+```{r}
+# Split the dataset into a training set (80%) and a test set (20%)
+set.seed(123)
+split_index <- createDataPartition(housing_data$price, p = 0.8, list = FALSE)
+train_data <- housing_data[split_index, ]
+test_data <- housing_data[-split_index, ]
+```
+
+**3. Data Pre-processing**
+
+***a. Handle missing values, if any***
+
+```{r}
+colSums(is.na(housing_data))
+```
+
+There are no missing values
+
+***b. Perform feature scaling or normalization***
+
+```{r}
+# Normalize numeric features
+train_data_scaled <- scale(train_data[, c("area", "bedrooms", "bathrooms")])
+train_data[, c("area", "bedrooms", "bathrooms")] <- train_data_scaled
+
+test_data_scaled <- scale(test_data[, c("area", "bedrooms", "bathrooms")])
+test_data[, c("area", "bedrooms", "bathrooms")] <- test_data_scaled
+
+
+```
+
+***c. Encode categorical variables***
+
+```{r}
+# Encode categorical variables
+#train_data <- dummyVars(" ~ .", data = train_data) %>% predict(train_data) %>% as.data.frame()
+#test_data <- dummyVars(" ~ .", data = test_data) %>% predict(test_data) %>% as.data.frame()
+#train_data <- dummy_cols(train_data, select_columns = "furnishingstatus")
+#test_data <- dummy_cols(test_data, select_columns = "furnishingstatus")
+
+
+```
+
+**4. Model Selection**
+
+***a. Choose at least three regression models***
+
+```{r}
+# Choose at least three regression models
+linear_model <- lm(price ~ ., data = train_data)
+decision_tree_model <- rpart(price ~ ., data = train_data, method = "anova")
+random_forest_model <- randomForest(price ~ ., data = train_data)
+```
+
+**5. Model Evaluation**
+
+***a. Predict housing prices using the test set***
+
+```{r}
+# Predict housing prices using the test set
+linear_pred <- predict(linear_model, newdata = test_data)
+decision_tree_pred <- predict(decision_tree_model, newdata = test_data)
+random_forest_pred <- predict(random_forest_model, newdata = test_data)
+
+```
+
+***b. Evaluate the models using suitable regression metrics***
+
+```{r}
+# Evaluate the models using suitable regression metrics
+linear_metrics <- postResample(linear_pred, test_data$price)
+decision_tree_metrics <- postResample(decision_tree_pred, test_data$price)
+random_forest_metrics <- postResample(random_forest_pred, test_data$price)
+
+```
+
+***c. Compare the performance of the models***
+
+```{r}
+#  Compare the performance of the models
+comparison_table <- data.frame(
+  Model = c("Linear Regression", "Decision Tree", "Random Forest"),
+  RMSE = c(sqrt(mean(linear_metrics^2)), sqrt(mean(decision_tree_metrics^2)), sqrt(mean(random_forest_metrics^2)))
+)
+print(comparison_table)
+```
+
+**6. Hyperparameter Tuning**
+
+***a. Select the best-performing model***
+
+```{r}
+# Select the best-performing model
+best_model <- comparison_table$Model[which.min(comparison_table$RMSE)]
+
+```
+
+***b. Perform hyperparameter tuning using techniques like GridSearchCV or RandomizedSearchCV***
+
+```{r}
+# Perform hyperparameter tuning using techniques like GridSearchCV or RandomizedSearchCV
+# Note: Hyperparameter tuning example for Random Forest
+tune_grid <- expand.grid(mtry = c(2, 4, 6, 8))
+random_forest_tuned_model <- train(price ~ ., data = train_data, method = "rf", tuneGrid = tune_grid)
+
+```
+
+**7. Visualization**
+
+***a. Visualize the predicted prices against the actual prices using scatter plots***
+
+```{r}
+# Visualize the predicted prices against the actual prices using scatter plots
+plot(test_data$price, linear_pred, main = "Linear Regression: Actual vs. Predicted Prices", col = "blue", pch = 16)
+abline(0, 1, col = "red")
+```
+
+***b. Create a learning curve to analyze model performance with varying amounts of training data***
+
+```{r}
+# Create a learning curve to analyze model performance with varying amounts of training data
+learning_curve <- data.frame(
+  Training_Size = seq(0.1, 0.9, by = 0.1),
+  RMSE = numeric(length = 9)
+)
+
+
+```
+
+**8. Conclusion**
+
+***a. Summarize the findings and insights gained from the analysis***
+
+1.  **Linear Regression:**
+
+    -   RMSE: 816,472.3
+
+    -   This value indicates the average magnitude of the errors in predictions made by the Linear Regression model.
+
+    -   The lower the RMSE, the better the model's predictions are relative to the actual values.
+
+    -   The magnitude of errors, on average, is approximately 816,472.3 units.
+
+2.  **Decision Tree:**
+
+    -   RMSE: 1,038,755.4
+
+    -   This value represents the average magnitude of errors for predictions made by the Decision Tree model.
+
+    -   The Decision Tree's predictions have, on average, a magnitude of approximately 1,038,755.4 units away from the actual values.
+
+3.  **Random Forest:**
+
+    -   RMSE: 809,767.1
+
+    -   This value indicates the average magnitude of errors for predictions made by the Random Forest model.
+
+    -   The Random Forest model's predictions, on average, have a magnitude of approximately 809,767.1 units in difference from the actual values.
+
+**Interpretation:**
+
+-   The model with the lowest RMSE is generally considered to be the best-performing model in terms of prediction accuracy.
+
+-   In this case, the Random Forest model has the lowest RMSE (809,767.1), suggesting that it provides the most accurate predictions among the three models.
+
+-   Linear Regression has a lower RMSE compared to the Decision Tree, indicating that it performs better than the Decision Tree in terms of prediction accuracy.
+
+***b. Reflect on the challenges encountered and potential improvements***
+
+Reflecting on challenges encountered and considering potential improvements is an essential part of the data analysis and machine learning process. Here are some reflections based on the tasks performed in the provided R code for the housing prices prediction:
+
+### **Challenges Encountered:**
+
+1.  **Categorical Variable Encoding:**
+
+    -   Handling categorical variables and ensuring proper encoding can be challenging. The error related to contrasts suggests issues with factor levels or encoding methods.
+
+2.  **Hyperparameter Tuning:**
+
+    -   The code includes a simple example of hyperparameter tuning for Random Forest, but this process can be more complex, especially for models with numerous hyperparameters.
+
+3.  **Learning Curve Analysis:**
+
+    -   Creating a learning curve manually can be challenging and time-consuming. Using established packages or functions to generate learning curves might be more efficient.
+
+4.  **Data Exploration and Pre-processing:**
+
+    -   Real-world datasets often require extensive exploration and pre-processing. Dealing with missing values, outliers, and ensuring appropriate scaling are crucial and may involve additional steps.
+
+### **Potential Improvements:**
+
+1.  **Automated Categorical Variable Encoding:**
+
+    -   Utilize functions or packages that automate the encoding of categorical variables. This can help avoid errors related to contrasts and streamline the pre-processing steps.
+
+2.  **Hyperparameter Tuning Framework:**
+
+    -   Implement a more comprehensive hyperparameter tuning framework using techniques like GridSearchCV or RandomizedSearchCV. This can enhance the model selection process and improve overall performance.
+
+3.  **Learning Curve Function:**
+
+    -   Create a reusable function or use existing packages to generate learning curves. This can make it easier to analyze model performance with varying amounts of training data.
+
+4.  **Comprehensive Data Exploration:**
+
+    -   Enhance data exploration by implementing more thorough techniques. Identify and handle outliers, explore relationships between variables, and perform a more in-depth analysis to uncover patterns.
+
+5.  **Documentation:**
+
+    -   Improve documentation of the code, especially for each step of the analysis. Clearly comment on the purpose and functionality of each block of code, making it easier for others (or future you) to understand.
+
+6.  **Code Modularity:**
+
+    -   Break down the code into modular functions. This promotes reusability, readability, and easier maintenance.
+
+7.  **Handling Edge Cases:**
+
+    -   Consider how the code handles edge cases, such as scenarios with very few training samples. Implement additional checks or strategies to handle such cases gracefully.
+
+8.  **Visualization Improvements:**
+
+    -   Enhance visualizations to provide more meaningful insights. Consider using more advanced plots or interactive visualizations for a better understanding of the model's behavior.
+
+By addressing these potential improvements, the code becomes more useful and maintainable.
